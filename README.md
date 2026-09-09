@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="VPN NetGuard icon" width="140">
+  <img src="assets/icon.svg" alt="VPN NetGuard icon" width="140">
 </p>
 
 <h1 align="center">VPN NetGuard</h1>
