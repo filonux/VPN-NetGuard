@@ -44,6 +44,9 @@
 
 VPN NetGuard is a **privacy tool** for Linux. If you use a VPN so your Internet provider, the Wi-Fi network you're on, or the sites you visit can't see what you're doing or your real location, VPN NetGuard makes sure that protection doesn't quietly fail on you.
 
+<img width="694" height="578" alt="menu-terminal-vpnnetguard-en" src="https://github.com/user-attachments/assets/861e344d-0339-4412-a89d-7ff64b48b450" />
+<img width="562" height="552" alt="menu-vpnnetguard-en" src="https://github.com/user-attachments/assets/947fc4e8-87ea-4f21-a0e1-01f8ace8e3e0" />
+
 Specifically, it protects you from two things:
 
 - **Your VPN failing silently.** If the connection drops, the computer reboots, or the tunnel stops working without warning, your "real" (unprotected) traffic normally starts going out to the Internet without you noticing, exposing your IP and your activity. VPN NetGuard blocks all traffic the moment it detects the VPN isn't working, and won't let anything through again until it's back up — even during the computer's own boot process.
