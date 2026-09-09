@@ -313,7 +313,7 @@ VPN NetGuard runs as root and modifies firewall rules. If you find a security is
 
 ## License
 
-Free software under the GNU General Public License version 3 (GPLv3). See the [LICENSE](LICENSE) file for the full text.
+Free software under the GNU General Public License version 3 (GPLv3). See the [LICENSE](LICENSE.txt) file for the full text.
 
 ---
 
