@@ -85,12 +85,17 @@ CHROME_POLICY_MARKER="$STATE_DIR/browser-doh-chrome-created"
 CHROMIUM_POLICY_MARKER="$STATE_DIR/browser-doh-chromium-created"
 CHROMIUM_BROWSER_POLICY_MARKER="$STATE_DIR/browser-doh-chromium-browser-created"
 
+# This script deliberately does not use `set -e` (the sourced script and its
+# mocks rely on non-zero returns), so every check that must be able to fail the
+# run propagates its status explicitly. Otherwise the final `echo` would make
+# the whole lab exit 0 even when a validator or the namespace check failed.
 RESTORE_OUT="$TMP/v4.restore" apply_killswitch_rules "tun0"
-python3 "$BASE_DIR/test/validate_firewall_restore.py" v4 "$TMP/v4.restore"
+python3 "$BASE_DIR/test/validate_firewall_restore.py" v4 "$TMP/v4.restore" || exit 1
 RESTORE_OUT="$TMP/v6.restore" apply_killswitch_rules6 "tun0"
-python3 "$BASE_DIR/test/validate_firewall_restore.py" v6 "$TMP/v6.restore"
+python3 "$BASE_DIR/test/validate_firewall_restore.py" v6 "$TMP/v6.restore" || exit 1
 
 # Prove the test itself is isolated in a real network namespace.
-unshare -Urn bash -c 'set -e; ip link add labA type veth peer labB; ip link set labA up; ip link set labB up; ip link del labA'
+unshare -Urn bash -c 'set -e; ip link add labA type veth peer labB; ip link set labA up; ip link set labB up; ip link del labA' \
+    || { echo 'NETNS: isolation unavailable (unshare/ip failed)' >&2; exit 1; }
 
 echo 'NETNS: isolated network capabilities available'
