@@ -1,0 +1,153 @@
+# CI de VPN NetGuard: ejecuta los tests que ya existen en test/.
+#
+#   lint  -> test/run-shellcheck.sh        (ShellCheck 0.11.0 fijado, sin root)
+#   tests -> test/test-vpn-netguard.sh     (suite principal; ya incluye los validadores .py)
+#            test/run-mutation-tests.py    (mutation testing)
+#            test/test-vpn-netguard-lab.sh (restore de firewall, salto OUTPUT, convivencia
+#                                           y cesión del bloqueo ante otros kill switch con
+#                                           iptables real en un netns, aislamiento netns; los
+#                                           casos ip6tables se omiten si el runner no lo trae)
+#
+# Por qué el workflow hace "cosas raras" (todo reproducido en local):
+#   1. La suite necesita ROOT: sin él fallan los tests que cambian propietarios o
+#      exigen root ("cannot change ownership", "Operation not permitted", "debe
+#      ejecutarse como root"). Por eso se lanza con sudo.
+#   2. Los runners traen shellcheck, ip6tables y resolvectl preinstalados y hay
+#      tests que asumen que NO existen (T134 y T161 con shellcheck, T87 con
+#      ip6tables, T148 con resolvectl). Se quitan antes de testear.
+#   3. ubuntu-latest está migrando a Ubuntu 26.04 (19 oct - 19 nov 2026), así que
+#      las imágenes se fijan de forma explícita en vez de usar ubuntu-latest.
+#   4. test/test-vpn-netguard-lab.sh sale con 1 si falla un validador o el
+#      aislamiento netns, así que el paso "Lab" es rojo de verdad.
+#   5. T91 (y T42/T48/T49 si ip6tables existiera) llama al iptables REAL sin
+#      mock: `iptables -C OUTPUT -j NETGUARD_KS`. Si esa cadena existiera, el
+#      bucle de remove_killswitch_if_present la borraría (-D, -F, -X) y el test
+#      pasaría en verde. En un runner efímero es inocuo, pero en un self-hosted
+#      o en tu propio equipo desactivaría un killswitch real. Por eso la suite
+#      y los mutantes corren dentro de `unshare --net`: un firewall vacío y
+#      desechable en lugar del del host.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]   # ajusta a tu rama por defecto
+  pull_request:
+  workflow_dispatch:           # permite lanzarlo a mano desde la pestaña Actions
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---------------------------------------------------------------------------
+  lint:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # run-shellcheck.sh usa antes que nada el `shellcheck` del PATH y, si no es
+      # exactamente la 0.11.0, falla sin probar otras vías. ubuntu-24.04 trae la
+      # 0.9.0, así que se quita para que el helper use su propia descarga fijada.
+      - name: Quitar el ShellCheck preinstalado
+        run: |
+          for p in $(type -ap shellcheck); do sudo rm -f -- "$p"; done
+          hash -r
+          if command -v shellcheck >/dev/null 2>&1; then
+            echo "::error::shellcheck sigue en el PATH tras la limpieza"
+            exit 1
+          fi
+
+      - name: ShellCheck 0.11.0
+        env:
+          # Fuerza la descarga con verificación SHA-256 del propio helper,
+          # en lugar de la imagen Docker (cuya etiqueta no es inmutable).
+          VPN_NETGUARD_DISABLE_SHELLCHECK_DOCKER: "1"
+          VPN_NETGUARD_DISABLE_SHELLCHECK_PODMAN: "1"
+          VPN_NETGUARD_DISABLE_SHELLCHECK_NPM: "1"
+        run: bash test/run-shellcheck.sh
+
+  # ---------------------------------------------------------------------------
+  tests:
+    name: Tests (${{ matrix.os }}${{ matrix.experimental && ', experimental' || '' }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Base de Linux Mint 22.x: el objetivo principal del proyecto.
+          - os: ubuntu-24.04
+            experimental: false
+          # Siguiente LTS (bash 5.3): aviso temprano; si falla, no rompe el workflow.
+          - os: ubuntu-26.04
+            experimental: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Los .sh/.py pueden no tener el bit de ejecución en git (p. ej. si se
+      # subieron desde Windows) y run-mutation-tests.py ejecuta la suite directamente.
+      - name: Dar permisos de ejecución
+        run: chmod +x script/*.sh test/*.sh test/*.py
+
+      - name: Versiones del runner
+        run: |
+          bash --version | head -1
+          python3 --version
+          sudo --version | head -1
+          for t in shellcheck ip6tables resolvectl iptables; do
+            printf '%-12s %s\n' "$t" "$(command -v "$t" || echo '(no está)')"
+          done
+
+      - name: Preparar entorno limpio (sin shellcheck, ip6tables ni resolvectl en el PATH)
+        run: |
+          for tool in shellcheck ip6tables resolvectl; do
+            for p in $(type -ap "$tool"); do sudo rm -f -- "$p"; done
+          done
+          hash -r
+          for tool in shellcheck ip6tables resolvectl; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              echo "::error::$tool sigue en el PATH tras la limpieza"
+              exit 1
+            fi
+          done
+
+      # En el log verás mensajes en stderr de los tests "negativos" (p. ej. "No se
+      # pudo retirar de forma segura el estado activo"): son esperados. Lo que
+      # cuenta es el código de salida y la línea final "N passed, 0 failed".
+      #
+      # `unshare --net`: red propia para que ningún test toque el firewall real.
+      - name: Suite principal
+        id: suite
+        run: sudo unshare --net ./test/test-vpn-netguard.sh
+
+      # Solo tiene sentido con la suite en verde: si falla, los mutantes
+      # "se detectarían" por motivos equivocados.
+      - name: Mutation tests
+        if: ${{ !cancelled() && steps.suite.outcome == 'success' }}
+        run: sudo unshare --net python3 test/run-mutation-tests.py
+
+      # Ubuntu 24.04+ restringe los user namespaces con AppArmor y
+      # `unshare -Urn` falla con "Operation not permitted"; se relaja solo en
+      # este runner efímero (si el sysctl no existe, se ignora).
+      - name: Lab (restore de firewall + salto OUTPUT + convivencia y cesión con iptables real + aislamiento netns)
+        if: ${{ !cancelled() }}
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          sudo ./test/test-vpn-netguard-lab.sh
