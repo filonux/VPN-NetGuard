@@ -1,0 +1,17 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#0E7C86"/>
+    </linearGradient>
+  </defs>
+  <path d="M128,7.2 C91.6,7.2 46.8,19.7 10.4,45.9 L10.4,139.4 C10.4,198.7 60.8,237.4 128,248.8 C195.2,237.4 245.6,198.7 245.6,139.4 L245.6,45.9 C209.2,19.7 164.4,7.2 128,7.2 Z"
+        fill="url(#shieldGrad)" stroke="#09202E" stroke-width="4"/>
+  <path d="M128,20.8 C97.2,20.8 58,32.2 27.2,55 L27.2,137.1 C27.2,187.3 69.2,219.2 128,232.9"
+        fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="128" cy="89.2" rx="11.2" ry="9.1" fill="#EAF6F6"/>
+  <path d="M94.4,89.2 A33.6,27.4 0 0 1 161.6,89.2" fill="none" stroke="#EAF6F6" stroke-width="9" stroke-linecap="round"/>
+  <path d="M94.4,150.8 V125.7 A33.6,27.4 0 0 1 161.6,125.7 V150.8" fill="none" stroke="#EAF6F6" stroke-width="13" stroke-linecap="round"/>
+  <rect x="74.8" y="144" width="106.4" height="68.4" rx="17.8" fill="#EAF6F6"/>
+  <ellipse cx="128" cy="178.2" rx="15.4" ry="12.5" fill="#0E7C86"/>
+</svg>
