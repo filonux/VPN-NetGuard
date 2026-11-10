@@ -146,8 +146,14 @@ jobs:
       # Ubuntu 24.04+ restringe los user namespaces con AppArmor y
       # `unshare -Urn` falla con "Operation not permitted"; se relaja solo en
       # este runner efímero (si el sysctl no existe, se ignora).
+      #
+      # El lab se lanza SIN sudo: `unshare -Urn` mapea como root del namespace
+      # solo al usuario que lo ejecuta. Con sudo ese usuario es el uid 0 y los
+      # ficheros del checkout (uid de `runner`) quedan sin mapear ("nobody"): si
+      # algún directorio del camino no es o+x (p. ej. el home, 0750), el `source`
+      # del script falla con "Permission denied". Solo el sysctl necesita sudo.
       - name: Lab (restore de firewall + salto OUTPUT + convivencia y cesión con iptables real + aislamiento netns)
         if: ${{ !cancelled() }}
         run: |
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-          sudo ./test/test-vpn-netguard-lab.sh
+          ./test/test-vpn-netguard-lab.sh
