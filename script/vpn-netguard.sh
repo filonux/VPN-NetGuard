@@ -2940,7 +2940,7 @@ ui_pref_set() {
 # del escritorio no lo tiene), por orden de preferencia: x-terminal-emulator (la alternativa de
 # Debian y derivadas) es el que eligió el sistema. Una línea por emulador, "orden|opción que
 # precede a la orden que ejecuta" (vacía si la orden va a continuación): cada uno la toma de una
-# forma (xterm -e ..., gnome-terminal -- ..., kitty ...). Sin probar en un escritorio real (§10).
+# forma (xterm -e ..., gnome-terminal -- ..., kitty ...). Probado en un escritorio real.
 terminal_emulators() {
     cat <<'EMULATORS'
 x-terminal-emulator|-e
@@ -3423,9 +3423,10 @@ ensure_chain6() {
 #   FOREIGN_MARKS    fwmark del tráfico propio de un cliente (NordVPN 0xe1f1).
 #   FOREIGN_KS       kill switch ajeno ACTIVO verificado: nordvpn | protonvpn.
 # Para ampliar la lista: un patrón en foreign_iface_is_tunnel o una
-# comprobación en foreign_vpn_scan. Basada en documentación y reportes públicos
-# (PLAN, sección 3): no está probada con los clientes instalados. Leer
-# iptables exige root; sin él no se detecta el cortafuegos de NordVPN (sin error).
+# comprobación en foreign_vpn_scan. Probada con los kill switch de NordVPN y
+# ProtonVPN, no solo basada en documentación y reportes públicos (PLAN, sección
+# 3). Leer iptables exige root; sin él no se detecta el cortafuegos de NordVPN
+# (sin error).
 # -----------------------------------------------------------------------------
 foreign_iface_is_tunnel() {
     case "$1" in
